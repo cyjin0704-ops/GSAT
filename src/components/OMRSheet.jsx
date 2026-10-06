@@ -28,6 +28,10 @@ export default function OMRSheet({ sections, session, lockedSections, onSessionC
   const selectedCount = session.retryKeys ? session.retryKeys.filter((key) => session.answers[key] != null).length : Object.keys(session.answers).length;
   const currentSection = sections.find((section) => section.id === session.currentSectionId) || sections[0];
   const resultRows = useMemo(() => (session.result?.questions || []).filter((row) => filter === "all" || row.status === filter), [session.result, filter]);
+  const resultGroups = useMemo(() => sections.map((section) => ({
+    section,
+    rows: resultRows.filter((row) => row.sectionId === section.id),
+  })).filter((group) => group.rows.length), [resultRows, sections]);
   const areaResults = useMemo(() => session.result ? sectionStats(session.result, sections) : [], [session.result, sections]);
 
   const selectQuestion = (sectionId, number) => onQuestionChange({ sectionId, number });
@@ -92,9 +96,12 @@ export default function OMRSheet({ sections, session, lockedSections, onSessionC
         </section>
         {session.retryOf && <div className="retry-compare">최초: {STATUS_LABELS[session.retryOf.previousStatus]} · {formatSeconds(session.retryOf.previousTime)} → 재풀이: {STATUS_LABELS[session.result.questions[0]?.status]} · {formatSeconds(session.result.questions[0]?.totalTime)}</div>}
         <div className="status-filter">{FILTERS.map((value) => <button key={value} className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{value === "all" ? "전체" : STATUS_LABELS[value]}</button>)}</div>
-        <div className="result-list">{resultRows.map((item) => <button className={`result-row ${item.status}`} key={item.key} onClick={() => { onQuestionChange({ sectionId: item.sectionId, number: item.number }); if (item.pdfPage) onPageJump(item.pdfPage); }}>
-          <b>{sections.find((s) => s.id === item.sectionId)?.shortName} {item.number}</b><span>내 답 {item.answer ?? "-"} / 정답 {item.correctAnswer}</span><span>{formatSeconds(item.totalTime)}</span><em>{STATUS_LABELS[item.status]}</em>
-        </button>)}</div>
+        <div className="result-list">{resultGroups.map(({ section, rows }) => <section className={`result-section result-section-${section.id}`} key={section.id}>
+          <h4 className="result-section-title"><span>{section.name}</span><small>1~{section.questionCount}번</small></h4>
+          <div className="result-section-rows">{rows.map((item) => <button className={`result-row ${item.status}`} key={item.key} onClick={() => { onQuestionChange({ sectionId: item.sectionId, number: item.number }); if (item.pdfPage) onPageJump(item.pdfPage); }}>
+            <b>{section.shortName} {item.number}</b><span>내 답 {item.answer ?? "-"} / 정답 {item.correctAnswer}</span><span>{formatSeconds(item.totalTime)}</span><em>{STATUS_LABELS[item.status]}</em>
+          </button>)}</div>
+        </section>)}</div>
         <button className="export-pdf-btn" onClick={() => window.print()}>오답노트 PDF로 저장</button>
       </>}
     </div> : <div className="omr-content" ref={scrollRef}>{viewMode === "area" ? sections.filter((section) => !session.retryKeys || session.retryKeys.some((key) => key.startsWith(`${section.id}:`))).map((section) => <section className="omr-area" key={section.id}>
