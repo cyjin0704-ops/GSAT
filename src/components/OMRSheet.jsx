@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { questionKey, toGlobalNumber, totalQuestionCount } from "../areas";
-import { formatSeconds, parseAnswerKey, STATUS_LABELS } from "../utils/exam";
+import { formatSeconds, parseAnswerKey, sectionStats, STATUS_LABELS } from "../utils/exam";
 
 const CHOICES = [1, 2, 3, 4, 5];
 const FILTERS = ["all", "correct", "wrong", "skipped", "unanswered"];
@@ -28,6 +28,7 @@ export default function OMRSheet({ sections, session, lockedSections, onSessionC
   const selectedCount = session.retryKeys ? session.retryKeys.filter((key) => session.answers[key] != null).length : Object.keys(session.answers).length;
   const currentSection = sections.find((section) => section.id === session.currentSectionId) || sections[0];
   const resultRows = useMemo(() => (session.result?.questions || []).filter((row) => filter === "all" || row.status === filter), [session.result, filter]);
+  const areaResults = useMemo(() => session.result ? sectionStats(session.result, sections) : [], [session.result, sections]);
 
   const selectQuestion = (sectionId, number) => onQuestionChange({ sectionId, number });
   const submitGrade = () => {
@@ -80,6 +81,15 @@ export default function OMRSheet({ sections, session, lockedSections, onSessionC
       {session.result && <>
         <div className="score-cards">{Object.entries(session.result.counts).map(([status, count]) => <div className={`score-card ${status}`} key={status}><b>{count}</b><span>{STATUS_LABELS[status]}</span></div>)}</div>
         <div className="rate-row"><span>응답률 <b>{Math.round(session.result.responseRate * 100)}%</b></span><span>단순 정답률 <b>{Math.round(session.result.accuracy * 100)}%</b></span><span>{session.result.scoreMode === "penalty" ? "사용자 감점 점수" : "정답 수"} <b>{session.result.score}</b></span></div>
+        <section className="section-result-summary" aria-label="영역별 채점 결과">
+          <h4>영역별 채점 결과</h4>
+          {areaResults.map((area) => <div className="section-result-row" key={area.id}>
+            <strong>{area.name}</strong>
+            <span className="result-count correct">정답 {area.correct}</span>
+            <span className="result-count wrong">오답 {area.wrong}</span>
+            <span className="result-count unanswered" title={`스킵 ${area.skipped}개 포함`}>미응답 {area.unansweredTotal}</span>
+          </div>)}
+        </section>
         {session.retryOf && <div className="retry-compare">최초: {STATUS_LABELS[session.retryOf.previousStatus]} · {formatSeconds(session.retryOf.previousTime)} → 재풀이: {STATUS_LABELS[session.result.questions[0]?.status]} · {formatSeconds(session.result.questions[0]?.totalTime)}</div>}
         <div className="status-filter">{FILTERS.map((value) => <button key={value} className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{value === "all" ? "전체" : STATUS_LABELS[value]}</button>)}</div>
         <div className="result-list">{resultRows.map((item) => <button className={`result-row ${item.status}`} key={item.key} onClick={() => { onQuestionChange({ sectionId: item.sectionId, number: item.number }); if (item.pdfPage) onPageJump(item.pdfPage); }}>

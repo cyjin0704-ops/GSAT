@@ -39,8 +39,18 @@ test("재채점은 동일 기록을 새 정답표로만 다시 계산할 수 있
 });
 
 test("영역별 통계와 CSV 백업 열을 생성한다", () => {
-  const result = gradeAttempt({ sections, answers: { [questionKey("math",1)]: 1 }, answerKey: Array(50).fill(1), metrics: {}, pageMappings: {} });
-  assert.equal(sectionStats(result, sections)[0].correct, 1);
+  const result = gradeAttempt({
+    sections,
+    answers: { [questionKey("math",1)]: 1, [questionKey("math",2)]: 2 },
+    answerKey: Array(50).fill(1),
+    metrics: { [questionKey("math",3)]: { visits: 1, leftUnanswered: true } },
+    pageMappings: {},
+  });
+  const mathStats = sectionStats(result, sections)[0];
+  assert.deepEqual(
+    { correct: mathStats.correct, wrong: mathStats.wrong, skipped: mathStats.skipped, unanswered: mathStats.unanswered, unansweredTotal: mathStats.unansweredTotal },
+    { correct: 1, wrong: 1, skipped: 1, unanswered: 17, unansweredTotal: 18 },
+  );
   const csv = recordsToCsv([{ name:"1회", date:"2026-10-06", result, review:{} }], sections);
   assert.match(csv, /PDF 페이지/);
   assert.match(csv, /수리논리/);

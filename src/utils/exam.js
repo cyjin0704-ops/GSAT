@@ -43,9 +43,23 @@ export function gradeAttempt({ sections, answers, answerKey, metrics = {}, pageM
 export function sectionStats(result, sections) {
   return sections.map((section) => {
     const questions = result.questions.filter((item) => item.sectionId === section.id);
-    const correct = questions.filter((item) => item.status === "correct").length;
+    const statusCounts = questions.reduce((counts, item) => {
+      counts[item.status] = (counts[item.status] || 0) + 1;
+      return counts;
+    }, { correct: 0, wrong: 0, skipped: 0, unanswered: 0 });
+    const { correct, wrong, skipped, unanswered } = statusCounts;
     const totalSeconds = questions.reduce((sum, item) => sum + (item.totalTime || 0), 0);
-    return { ...section, correct, total: questions.length, accuracy: questions.length ? correct / questions.length : 0, averageTime: questions.length ? totalSeconds / questions.length : 0 };
+    return {
+      ...section,
+      correct,
+      wrong,
+      skipped,
+      unanswered,
+      unansweredTotal: skipped + unanswered,
+      total: questions.length,
+      accuracy: questions.length ? correct / questions.length : 0,
+      averageTime: questions.length ? totalSeconds / questions.length : 0,
+    };
   });
 }
 
