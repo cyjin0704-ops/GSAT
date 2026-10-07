@@ -20,13 +20,16 @@ function LazyPage({ pageNumber, scale, onSize }) {
   const slotRef = useRef(null);
   useEffect(() => {
     const element = slotRef.current;
-    if (!element || visible) return;
+    if (!element) return;
+    const scrollRoot = element.closest(".pdf-content");
     const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) { setVisible(true); observer.disconnect(); }
-    }, { rootMargin: "900px 0px" });
+      // 대용량 PDF에서도 현재 화면 주변 페이지만 실제로 렌더링한다.
+      // 화면에서 멀어진 페이지를 placeholder로 되돌려 canvas 메모리 누적을 막는다.
+      setVisible(entry.isIntersecting);
+    }, { root: scrollRoot, rootMargin: "900px 0px" });
     observer.observe(element);
     return () => observer.disconnect();
-  }, [visible]);
+  }, []);
   return (
     <div ref={slotRef} id={`pdf-page-${pageNumber}`} className="pdf-page-slot" data-page={pageNumber}>
       {visible && !renderError ? (
