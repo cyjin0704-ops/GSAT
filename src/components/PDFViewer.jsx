@@ -51,6 +51,9 @@ export default function PDFViewer({ pdfMeta, page, scale, onMetaChange, onPageCh
   const [pageSize, setPageSize] = useState({ width: 600, height: 848 });
   const containerRef = useRef(null);
   const fileInputRef = useRef(null);
+  const currentPageRef = useRef(page);
+
+  useEffect(() => { currentPageRef.current = page; }, [page]);
 
   useEffect(() => {
     let alive = true;
@@ -92,12 +95,46 @@ export default function PDFViewer({ pdfMeta, page, scale, onMetaChange, onPageCh
   useEffect(() => {
     if (!numPages || !containerRef.current) return;
     const root = containerRef.current;
-    const observer = new IntersectionObserver((entries) => {
-      const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => Math.abs(a.boundingClientRect.top - root.getBoundingClientRect().top) - Math.abs(b.boundingClientRect.top - root.getBoundingClientRect().top));
-      if (visible[0]) onPageChange(Number(visible[0].target.dataset.page));
-    }, { root, threshold: 0.15 });
-    root.querySelectorAll(".pdf-page-slot").forEach((node) => observer.observe(node));
-    return () => observer.disconnect();
+    let frameId = null;
+    const updateCurrentPage = () => {
+      frameId = null;
+      const slots = root.querySelectorAll(".pdf-page-slot");
+      if (!slots.length) return;
+
+      // 화면 상단에서 약간 아래 지점을 통과한 마지막 페이지를 현재 페이지로 본다.
+      const marker = root.scrollTop + 24;
+      let low = 0;
+      let high = slots.length - 1;
+      let activeIndex = 0;
+      while (low <= high) {
+        const middle = Math.floor((low + high) / 2);
+        if (slots[middle].offsetTop <= marker) {
+          activeIndex = middle;
+          low = middle + 1;
+        } else {
+          high = middle - 1;
+        }
+      }
+
+      const nextPage = Number(slots[activeIndex].dataset.page);
+      if (nextPage && nextPage !== currentPageRef.current) {
+        currentPageRef.current = nextPage;
+        onPageChange(nextPage);
+      }
+    };
+    const scheduleUpdate = () => {
+      if (frameId == null) frameId = requestAnimationFrame(updateCurrentPage);
+    };
+
+    root.addEventListener("scroll", scheduleUpdate, { passive: true });
+    const resizeObserver = new ResizeObserver(scheduleUpdate);
+    resizeObserver.observe(root);
+    scheduleUpdate();
+    return () => {
+      root.removeEventListener("scroll", scheduleUpdate);
+      resizeObserver.disconnect();
+      if (frameId != null) cancelAnimationFrame(frameId);
+    };
   }, [numPages, onPageChange]);
 
   useEffect(() => {
