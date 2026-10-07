@@ -68,6 +68,11 @@ export const formatSeconds = (seconds = 0) => {
   return `${Math.floor(rounded / 60)}:${String(rounded % 60).padStart(2, "0")}`;
 };
 
+export const stopwatchElapsedSeconds = (timer, now = Date.now()) => {
+  if (!timer?.running || !timer.startedAt) return Math.max(0, timer?.elapsed || 0);
+  return Math.max(0, Math.floor((now - timer.startedAt) / 1000));
+};
+
 const csvEscape = (value) => {
   const valueText = value == null ? "" : String(value);
   return /[",\n]/.test(valueText) ? `"${valueText.replace(/"/g, '""')}"` : valueText;

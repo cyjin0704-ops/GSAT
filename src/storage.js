@@ -23,7 +23,7 @@ export function createSession(mode, settings, overrides = {}) {
     currentSectionId: "math", currentQuestion: { sectionId: "math", number: 1 },
     answers: {}, metrics: { "math:1": { visits: 1, firstEnteredAt: now, lastEnteredAt: now } }, pageMappings: {},
     answerKey: [], result: null,
-    timer: { running: false, sectionId: "math", remaining: (settings.sections.math?.minutes || 30) * 60, endAt: null, warnings: [] },
+    timer: { kind: "countdown", running: false, sectionId: "math", remaining: (settings.sections.math?.minutes || 30) * 60, elapsed: 0, startedAt: null, endAt: null, warnings: [] },
     pdf: null, pdfPage: 1, pdfScale: 1, omrScrollTop: 0,
     ...overrides,
   };

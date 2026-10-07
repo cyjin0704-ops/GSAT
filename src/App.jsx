@@ -60,7 +60,7 @@ export default function App() {
       status: "ready",
       lockedSections: [],
       result: null,
-      timer: { running: false, sectionId: section.id, remaining: section.minutes * 60, endAt: null, warnings: [] },
+      timer: { kind: "countdown", running: false, sectionId: section.id, remaining: section.minutes * 60, elapsed: 0, startedAt: null, endAt: null, warnings: [] },
     });
     setModeMenuOpen(false);
   };
@@ -121,7 +121,7 @@ export default function App() {
   const expire = () => {
     if (session.currentSectionId === sections[0].id) {
       const next = sections[1];
-      patchSession({ currentSectionId: next.id, currentQuestion: { sectionId: next.id, number: 1 }, lockedSections: [...new Set([...(session.lockedSections || []), sections[0].id])], timer: { running: true, sectionId: next.id, remaining: next.minutes * 60, endAt: Date.now() + next.minutes * 60 * 1000, warnings: [] } });
+      patchSession({ currentSectionId: next.id, currentQuestion: { sectionId: next.id, number: 1 }, lockedSections: [...new Set([...(session.lockedSections || []), sections[0].id])], timer: { kind: "countdown", running: true, sectionId: next.id, remaining: next.minutes * 60, elapsed: 0, startedAt: null, endAt: Date.now() + next.minutes * 60 * 1000, warnings: [] } });
       enteredAtRef.current = Date.now(); alert("수리논리 시간이 종료되었습니다. 추리 영역으로 이동합니다.");
     } else { patchSession({ status: "finished", lockedSections: sections.map((s) => s.id), timer: { ...session.timer, running: false, remaining: 0, endAt: null } }); alert("시험 시간이 종료되었습니다. 답안이 저장되었습니다."); }
   };
@@ -129,7 +129,7 @@ export default function App() {
 
   const openRecord = (record, targetQuestion) => {
     const restored = createSession("practice", state.settings, { ...record, id: record.id, name: record.name, startedAt: new Date(record.date).getTime() || Date.now(), status: "finished", currentQuestion: targetQuestion || { sectionId: "math", number: 1 }, currentSectionId: targetQuestion?.sectionId || "math", pdfPage: targetQuestion ? record.pageMappings?.[questionKey(targetQuestion.sectionId,targetQuestion.number)] || 1 : 1,
-      timer: { running:false,sectionId:targetQuestion?.sectionId||"math",remaining:(sections.find((s)=>s.id===(targetQuestion?.sectionId||"math"))?.minutes||30)*60,endAt:null,warnings:[] } });
+      timer: { kind:"countdown",running:false,sectionId:targetQuestion?.sectionId||"math",remaining:(sections.find((s)=>s.id===(targetQuestion?.sectionId||"math"))?.minutes||30)*60,elapsed:0,startedAt:null,endAt:null,warnings:[] } });
     setState((prev) => ({ ...prev, session: restored, view: "exam" }));
     if (targetQuestion) setJumpPage(restored.pdfPage);
   };

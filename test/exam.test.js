@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildSections, questionKey } from "../src/areas.js";
-import { gradeAttempt, parseAnswerKey, recordsToCsv, sectionStats } from "../src/utils/exam.js";
+import { gradeAttempt, parseAnswerKey, recordsToCsv, sectionStats, stopwatchElapsedSeconds } from "../src/utils/exam.js";
 
 const sections = buildSections({ sections: { math: { questionCount: 20, minutes: 30 }, reasoning: { questionCount: 30, minutes: 30 } } });
 
@@ -54,4 +54,9 @@ test("영역별 통계와 CSV 백업 열을 생성한다", () => {
   const csv = recordsToCsv([{ name:"1회", date:"2026-10-06", result, review:{} }], sections);
   assert.match(csv, /PDF 페이지/);
   assert.match(csv, /수리논리/);
+});
+
+test("스톱워치는 실행·일시정지 상태의 경과시간을 복구한다", () => {
+  assert.equal(stopwatchElapsedSeconds({ running: true, startedAt: 10_000, elapsed: 0 }, 22_900), 12);
+  assert.equal(stopwatchElapsedSeconds({ running: false, startedAt: null, elapsed: 37 }, 99_000), 37);
 });
