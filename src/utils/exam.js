@@ -2,15 +2,14 @@ import { questionKey, toGlobalNumber } from "../areas.js";
 
 export const STATUS_LABELS = { correct: "정답", wrong: "오답", skipped: "스킵", unanswered: "미응답" };
 
-export function parseAnswerKey(input, expected) {
+export function parseAnswerKey(input, maximum) {
   const source = input.trim();
   if (!source) return { error: "정답을 입력해주세요." };
   const normalized = source.replace(/[，、]/g, ",");
   if (/[^1-5,\s]/.test(normalized)) return { error: "정답에는 1~5와 쉼표, 공백, 줄바꿈만 사용할 수 있습니다." };
   if (/,,|,\s*,/.test(normalized)) return { error: "구분자 사이에 누락된 정답이 있습니다." };
   const values = normalized.split(/[,\s]+/).filter(Boolean).map(Number);
-  if (values.length < expected) return { error: `정답이 ${expected - values.length}개 부족합니다. (${values.length}/${expected})` };
-  if (values.length > expected) return { error: `정답이 ${values.length - expected}개 많습니다. (${values.length}/${expected})` };
+  if (values.length > maximum) return { error: `정답이 ${values.length - maximum}개 많습니다. (${values.length}/${maximum})` };
   return { values };
 }
 
@@ -20,8 +19,9 @@ export function gradeAttempt({ sections, answers, answerKey, metrics = {}, pageM
     for (let number = 1; number <= section.questionCount; number += 1) {
       const key = questionKey(section.id, number);
       const globalNumber = toGlobalNumber(sections, section.id, number);
+      if (globalNumber > answerKey.length) continue;
       const answer = answers[key] ?? null;
-      const correctAnswer = answerKey[globalNumber - 1] ?? null;
+      const correctAnswer = answerKey[globalNumber - 1];
       const metric = metrics[key] ?? {};
       let status = "unanswered";
       if (answer != null) status = answer === correctAnswer ? "correct" : "wrong";

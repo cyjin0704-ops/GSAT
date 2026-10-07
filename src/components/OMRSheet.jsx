@@ -31,8 +31,9 @@ export default function OMRSheet({ sections, session, lockedSections, onSessionC
   const resultGroups = useMemo(() => sections.map((section) => ({
     section,
     rows: resultRows.filter((row) => row.sectionId === section.id),
-  })).filter((group) => group.rows.length), [resultRows, sections]);
-  const areaResults = useMemo(() => session.result ? sectionStats(session.result, sections) : [], [session.result, sections]);
+    gradedCount: (session.result?.questions || []).filter((row) => row.sectionId === section.id).length,
+  })).filter((group) => group.rows.length), [resultRows, sections, session.result]);
+  const areaResults = useMemo(() => session.result ? sectionStats(session.result, sections).filter((area) => area.total > 0) : [], [session.result, sections]);
 
   const selectQuestion = (sectionId, number) => onQuestionChange({ sectionId, number });
   const submitGrade = () => {
@@ -74,12 +75,14 @@ export default function OMRSheet({ sections, session, lockedSections, onSessionC
       <div className="omr-header-top"><div><h2>GSAT OMR</h2><span className="current-area-badge">{currentSection.name}</span></div>
         <div className="view-mode-toggle"><button className={viewMode === "area" ? "active" : ""} onClick={() => setViewMode("area")}>영역별</button><button className={viewMode === "all" ? "active" : ""} onClick={() => setViewMode("all")}>전체 1~{total}</button></div></div>
       <div className="omr-actions"><button className="grade-btn" disabled={session.mode === "real" && session.status !== "finished"} title={session.mode === "real" && session.status !== "finished" ? "실전 시험 종료 후 채점할 수 있습니다." : ""} onClick={() => setGrading((value) => !value)}>{grading ? "답안지" : "채점"}</button>
-        <button className="finish-btn" onClick={onFinish}>시험 종료</button><button className="clear-all-btn" onClick={() => window.confirm("모든 답안을 지울까요?") && onSessionChange({ answers: {}, result: null, answerKey: [] })}>초기화</button></div>
+        <button className="finish-btn" onClick={onFinish}>시험 종료</button>
+        <button className="clear-all-btn" onClick={() => window.confirm("모든 답안을 지울까요?") && onSessionChange({ answers: {}, result: null, answerKey: [] })}>답안 초기화</button>
+        <button className="mapping-clear-btn" disabled={!Object.keys(session.pageMappings || {}).length} onClick={() => window.confirm("모든 PDF 페이지 연결을 초기화할까요? 답안은 유지됩니다.") && onSessionChange({ pageMappings: {} })}>페이지 초기화</button></div>
       <div className="answer-progress"><span>선택 {selectedCount}/{total}</span><div><i style={{ width: `${selectedCount / total * 100}%` }} /></div></div>
     </div>
 
     {grading ? <div className="grading-section">
-      <h3>{session.retryKeys?.length ? "오답 재풀이 채점" : "정답 입력 · 재채점"}</h3><p className="help-text">{session.retryKeys?.length ? "기존 정답표로 재풀이 결과를 채점하고 최초 기록과 비교합니다." : `전체 ${total}개를 쉼표, 공백 또는 줄바꿈으로 붙여넣으세요. 수리 ${sections[0].questionCount}개 다음 추리 ${sections[1].questionCount}개 순서입니다.`}</p>
+      <h3>{session.retryKeys?.length ? "오답 재풀이 채점" : "정답 입력 · 재채점"}</h3><p className="help-text">{session.retryKeys?.length ? "기존 정답표로 재풀이 결과를 채점하고 최초 기록과 비교합니다." : `최대 ${total}개를 쉼표, 공백 또는 줄바꿈으로 붙여넣으세요. 입력한 개수까지만 수리 ${sections[0].questionCount}개 다음 추리 ${sections[1].questionCount}개 순서로 채점합니다.`}</p>
       {!session.retryKeys?.length && <textarea className="answer-input" rows="5" value={answerText} onChange={(e) => setAnswerText(e.target.value)} placeholder="1,2,3,4,5,..." />}
       <div className="grading-buttons"><button className="submit-grade-btn" onClick={submitGrade}>{session.result ? "재채점" : "채점하기"}</button>{!session.retryKeys?.length && <button className="clear-grade-btn" onClick={() => setAnswerText("")}>입력 지우기</button>}</div>
       {session.result && <>
@@ -96,8 +99,8 @@ export default function OMRSheet({ sections, session, lockedSections, onSessionC
         </section>
         {session.retryOf && <div className="retry-compare">최초: {STATUS_LABELS[session.retryOf.previousStatus]} · {formatSeconds(session.retryOf.previousTime)} → 재풀이: {STATUS_LABELS[session.result.questions[0]?.status]} · {formatSeconds(session.result.questions[0]?.totalTime)}</div>}
         <div className="status-filter">{FILTERS.map((value) => <button key={value} className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{value === "all" ? "전체" : STATUS_LABELS[value]}</button>)}</div>
-        <div className="result-list">{resultGroups.map(({ section, rows }) => <section className={`result-section result-section-${section.id}`} key={section.id}>
-          <h4 className="result-section-title"><span>{section.name}</span><small>1~{section.questionCount}번</small></h4>
+        <div className="result-list">{resultGroups.map(({ section, rows, gradedCount }) => <section className={`result-section result-section-${section.id}`} key={section.id}>
+          <h4 className="result-section-title"><span>{section.name}</span><small>1~{gradedCount}번 채점</small></h4>
           <div className="result-section-rows">{rows.map((item) => <button className={`result-row ${item.status}`} key={item.key} onClick={() => { onQuestionChange({ sectionId: item.sectionId, number: item.number }); if (item.pdfPage) onPageJump(item.pdfPage); }}>
             <b>{section.shortName} {item.number}</b><span>내 답 {item.answer ?? "-"} / 정답 {item.correctAnswer}</span><span>{formatSeconds(item.totalTime)}</span><em>{STATUS_LABELS[item.status]}</em>
           </button>)}</div>

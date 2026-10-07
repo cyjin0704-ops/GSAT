@@ -11,11 +11,25 @@ test("GSAT 기본 프리셋은 수리 20 + 추리 30이다", () => {
   assert.equal(sections[1].end, 50);
 });
 
-test("정답 붙여넣기 형식과 개수를 엄격히 검증한다", () => {
+test("정답 붙여넣기는 입력한 개수까지 허용하고 최대 개수를 검증한다", () => {
   assert.deepEqual(parseAnswerKey("1, 2\n3 4,5", 5).values, [1,2,3,4,5]);
-  assert.match(parseAnswerKey("1,2,3", 5).error, /2개 부족/);
+  assert.deepEqual(parseAnswerKey("1,2,3", 5).values, [1,2,3]);
+  assert.match(parseAnswerKey("1,2,3,4,5,1", 5).error, /1개 많습니다/);
   assert.match(parseAnswerKey("1,2,6,4,5", 5).error, /1~5/);
   assert.match(parseAnswerKey("1,,2,3,4", 5).error, /누락/);
+});
+
+test("부분 정답표는 입력한 앞 문항까지만 채점한다", () => {
+  const result = gradeAttempt({
+    sections,
+    answers: { "math:1": 1, "math:2": 4, "math:4": 1 },
+    answerKey: [1, 2, 3],
+    metrics: {},
+    pageMappings: { "math:4": 9 },
+  });
+  assert.equal(result.questions.length, 3);
+  assert.deepEqual(result.counts, { correct: 1, wrong: 1, skipped: 0, unanswered: 1 });
+  assert.equal(result.questions.some((question) => question.key === "math:4"), false);
 });
 
 test("정답·오답·스킵·미응답을 구분하고 PDF 연결과 시간을 보존한다", () => {
