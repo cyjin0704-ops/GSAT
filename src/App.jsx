@@ -128,12 +128,15 @@ export default function App() {
   const timerChange = (patch) => patchSession({ status: patch.running ? "running" : session.status, timer: { ...session.timer, ...patch } });
   const resetRealExam = () => {
     const hasAttemptData = session.status !== "ready" || Object.keys(session.answers || {}).length > 0 || Object.keys(session.pageMappings || {}).length > 0 || session.result;
-    if (hasAttemptData && !window.confirm("현재 응시 상태를 모두 초기화하고 수리논리부터 다시 시작할까요? 저장된 회차와 PDF 파일은 유지됩니다.")) return;
-    const nextSession = createSession("real", state.settings, { pdf: session.pdf, pdfScale: session.pdfScale });
+    if (hasAttemptData && !window.confirm("현재 답안과 시험 진행 상태를 초기화하고 수리논리부터 다시 시작할까요? 저장된 회차와 PDF 페이지 연결은 유지됩니다.")) return;
+    const nextSession = createSession("real", state.settings, {
+      pdf: session.pdf,
+      pdfPage: session.pdfPage,
+      pdfScale: session.pdfScale,
+      pageMappings: session.pageMappings,
+    });
     enteredAtRef.current = nextSession.metrics["math:1"].lastEnteredAt;
-    setJumpPage(null);
     setState((prev) => ({ ...prev, session: nextSession }));
-    requestAnimationFrame(() => setJumpPage(1));
   };
 
   const openRecord = (record, targetQuestion) => {
