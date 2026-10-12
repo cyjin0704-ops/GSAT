@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { formatSeconds, stopwatchElapsedSeconds } from "../utils/exam";
 
-export default function Timer({ sections, session, onTimerChange, onExpire }) {
+export default function Timer({ sections, session, onTimerChange, onExpire, onResetExam }) {
   const timer = session.timer;
   const [customMinutes, setCustomMinutes] = useState(Math.ceil(timer.remaining / 60));
   const warnedRef = useRef(new Set(timer.warnings || []));
@@ -40,7 +40,10 @@ export default function Timer({ sections, session, onTimerChange, onExpire }) {
     } else onTimerChange({ running: true, endAt: Date.now() + timer.remaining * 1000 });
   };
   const reset = () => {
-    if (session.mode === "real" && session.status === "running" && !window.confirm("실전 시험 타이머를 초기화할까요?")) return;
+    if (session.mode === "real") {
+      onResetExam();
+      return;
+    }
     if (timerKind === "stopwatch") {
       onTimerChange({ running: false, elapsed: 0, startedAt: null, endAt: null, warnings: [] });
       return;

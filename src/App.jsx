@@ -126,6 +126,15 @@ export default function App() {
     } else { patchSession({ status: "finished", lockedSections: sections.map((s) => s.id), timer: { ...session.timer, running: false, remaining: 0, endAt: null } }); alert("시험 시간이 종료되었습니다. 답안이 저장되었습니다."); }
   };
   const timerChange = (patch) => patchSession({ status: patch.running ? "running" : session.status, timer: { ...session.timer, ...patch } });
+  const resetRealExam = () => {
+    const hasAttemptData = session.status !== "ready" || Object.keys(session.answers || {}).length > 0 || Object.keys(session.pageMappings || {}).length > 0 || session.result;
+    if (hasAttemptData && !window.confirm("현재 응시 상태를 모두 초기화하고 수리논리부터 다시 시작할까요? 저장된 회차와 PDF 파일은 유지됩니다.")) return;
+    const nextSession = createSession("real", state.settings, { pdf: session.pdf, pdfScale: session.pdfScale });
+    enteredAtRef.current = nextSession.metrics["math:1"].lastEnteredAt;
+    setJumpPage(null);
+    setState((prev) => ({ ...prev, session: nextSession }));
+    requestAnimationFrame(() => setJumpPage(1));
+  };
 
   const openRecord = (record, targetQuestion) => {
     const restored = createSession("practice", state.settings, { ...record, id: record.id, name: record.name, startedAt: new Date(record.date).getTime() || Date.now(), status: "finished", currentQuestion: targetQuestion || { sectionId: "math", number: 1 }, currentSectionId: targetQuestion?.sectionId || "math", pdfPage: targetQuestion ? record.pageMappings?.[questionKey(targetQuestion.sectionId,targetQuestion.number)] || 1 : 1,
@@ -153,8 +162,8 @@ export default function App() {
     if (!session) return <HomeView records={state.records} sections={sections} onStart={start} onPdfStart={startWithPdf} onView={setView} onImport={importData} onExport={()=>exportJson(state)} />;
     return <main className="exam-shell"><div className="exam-toolbar"><div><b>{session.name}</b><div className="mode-menu-wrap"><button className={`mode-switch-btn ${session.mode}`} onClick={()=>setModeMenuOpen((open)=>!open)}>{session.mode === "real" ? "실전 모드" : "연습 모드"} ▾</button>{modeMenuOpen && <div className="mode-menu"><button className={session.mode === "real" ? "active" : ""} onClick={()=>changeMode("real")}><b>실전 모드</b><span>영역별 30분 · 일시정지 불가</span></button><button className={session.mode === "practice" ? "active" : ""} onClick={()=>changeMode("practice")}><b>연습 모드</b><span>시간 변경 · 일시정지 가능</span></button></div>}</div></div><button onClick={()=>setShowHelp(true)}>단축키 · 도움말</button><button onClick={()=>setView("home")}>홈</button></div>
       <div className="app"><div className="middle-panel"><PDFViewer pdfMeta={session.pdf} page={session.pdfPage} scale={session.pdfScale} onMetaChange={(pdf)=>patchSession({pdf})} onPageChange={updatePdfPage} onScaleChange={updatePdfScale} jumpPage={jumpPage}/></div>
-        <div className="omr-container"><div className="omr-panel"><OMRSheet sections={sections} session={session} lockedSections={session.mode === "real" ? (session.status === "ready" || session.status === "finished" ? sections.map((s)=>s.id) : [...new Set([...(session.lockedSections || []), ...sections.filter((s)=>s.id!==session.currentSectionId).map((s)=>s.id)])]) : []} onSessionChange={patchSession} onQuestionChange={leaveQuestion} onAnswer={answer} onGrade={grade} onFinish={finish} onPageJump={(page)=>{setJumpPage(page);patchSession({pdfPage:page});}}/></div></div>
-        <aside className="right-panel"><div className="timer-section"><Timer sections={sections} session={session} onTimerChange={timerChange} onExpire={expire}/></div><div className="timer-guide"><b>GSAT 시험 구성</b><span>수리논리 20문항 · 30분</span><span>추리 30문항 · 30분</span><small>모드는 상단 버튼에서 언제든 변경할 수 있습니다.</small></div></aside></div></main>;
+        <div className="omr-container"><div className="omr-panel"><OMRSheet key={session.id} sections={sections} session={session} lockedSections={session.mode === "real" ? (session.status === "ready" || session.status === "finished" ? sections.map((s)=>s.id) : [...new Set([...(session.lockedSections || []), ...sections.filter((s)=>s.id!==session.currentSectionId).map((s)=>s.id)])]) : []} onSessionChange={patchSession} onQuestionChange={leaveQuestion} onAnswer={answer} onGrade={grade} onFinish={finish} onPageJump={(page)=>{setJumpPage(page);patchSession({pdfPage:page});}}/></div></div>
+        <aside className="right-panel"><div className="timer-section"><Timer key={session.id} sections={sections} session={session} onTimerChange={timerChange} onExpire={expire} onResetExam={resetRealExam}/></div><div className="timer-guide"><b>GSAT 시험 구성</b><span>수리논리 20문항 · 30분</span><span>추리 30문항 · 30분</span><small>모드는 상단 버튼에서 언제든 변경할 수 있습니다.</small></div></aside></div></main>;
   })();
 
   return <><AppNav view={state.view} setView={setView} hasSession={Boolean(session)}/>{body}{showHelp && <Tutorial onClose={()=>setShowHelp(false)}/>}</>;
