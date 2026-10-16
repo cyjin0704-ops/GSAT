@@ -46,8 +46,9 @@ export default function OMRSheet({ sections, session, lockedSections, onSessionC
   useEffect(() => {
     const handler = (event) => {
       if (["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName)) return;
-      if (/^[1-5]$/.test(event.key) && !grading) { event.preventDefault(); onAnswer(current.sectionId, current.number, Number(event.key)); }
-      if (event.key === "Enter" && !grading) {
+      const currentLocked = lockedSections.includes(current.sectionId);
+      if (/^[1-5]$/.test(event.key) && !grading && !currentLocked) { event.preventDefault(); onAnswer(current.sectionId, current.number, Number(event.key)); }
+      if (event.key === "Enter" && !grading && !currentLocked) {
         const section = sections.find((item) => item.id === current.sectionId);
         if (current.number < section.questionCount) selectQuestion(current.sectionId, current.number + 1);
       }

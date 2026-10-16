@@ -36,6 +36,7 @@ export default function Timer({ sections, session, onTimerChange, onExpire, onRe
   }, [timer.running, timer.endAt, timer.startedAt, timerKind]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = () => {
+    if (session.status === "between-sections") return;
     if (timer.running) {
       if (session.mode === "real") return;
       if (timerKind === "stopwatch") onTimerChange({ running: false, elapsed: stopwatchElapsedSeconds(timer), startedAt: null });

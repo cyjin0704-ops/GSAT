@@ -121,11 +121,15 @@ export default function App() {
   const expire = () => {
     if (session.currentSectionId === sections[0].id) {
       const next = sections[1];
-      alert("수리 영역이 끝났습니다. 확인을 누르면 다음 영역으로 넘어갑니다.");
-      const nextStartedAt = Date.now();
-      patchSession({ currentSectionId: next.id, currentQuestion: { sectionId: next.id, number: 1 }, lockedSections: [...new Set([...(session.lockedSections || []), sections[0].id])], timer: { kind: "countdown", running: true, sectionId: next.id, remaining: next.minutes * 60, elapsed: 0, startedAt: null, endAt: nextStartedAt + next.minutes * 60 * 1000, warnings: [] } });
-      enteredAtRef.current = nextStartedAt;
+      patchSession({ status: "between-sections", currentSectionId: next.id, currentQuestion: { sectionId: next.id, number: 1 }, lockedSections: [...new Set([...(session.lockedSections || []), sections[0].id])], timer: { kind: "countdown", running: false, sectionId: next.id, remaining: next.minutes * 60, elapsed: 0, startedAt: null, endAt: null, warnings: [] } });
     } else { patchSession({ status: "finished", lockedSections: sections.map((s) => s.id), timer: { ...session.timer, running: false, remaining: 0, endAt: null } }); alert("시험 시간이 종료되었습니다. 답안이 저장되었습니다."); }
+  };
+  const confirmSectionTransition = () => {
+    if (session.status !== "between-sections") return;
+    const nextStartedAt = Date.now();
+    const remaining = session.timer.remaining || (sections.find((section) => section.id === session.timer.sectionId)?.minutes || 30) * 60;
+    enteredAtRef.current = nextStartedAt;
+    patchSession({ status: "running", timer: { ...session.timer, running: true, remaining, startedAt: nextStartedAt, endAt: nextStartedAt + remaining * 1000, warnings: [] } });
   };
   const timerChange = (patch) => patchSession({ status: patch.running ? "running" : session.status, timer: { ...session.timer, ...patch } });
   const resetRealExam = () => {
@@ -167,9 +171,9 @@ export default function App() {
     if (!session) return <HomeView records={state.records} sections={sections} onStart={start} onPdfStart={startWithPdf} onView={setView} onImport={importData} onExport={()=>exportJson(state)} />;
     return <main className="exam-shell"><div className="exam-toolbar"><div><b>{session.name}</b><div className="mode-menu-wrap"><button className={`mode-switch-btn ${session.mode}`} onClick={()=>setModeMenuOpen((open)=>!open)}>{session.mode === "real" ? "실전 모드" : "연습 모드"} ▾</button>{modeMenuOpen && <div className="mode-menu"><button className={session.mode === "real" ? "active" : ""} onClick={()=>changeMode("real")}><b>실전 모드</b><span>영역별 30분 · 일시정지 불가</span></button><button className={session.mode === "practice" ? "active" : ""} onClick={()=>changeMode("practice")}><b>연습 모드</b><span>시간 변경 · 일시정지 가능</span></button></div>}</div></div><button onClick={()=>setShowHelp(true)}>단축키 · 도움말</button><button onClick={()=>setView("home")}>홈</button></div>
       <div className="app"><div className="middle-panel"><PDFViewer pdfMeta={session.pdf} page={session.pdfPage} scale={session.pdfScale} onMetaChange={(pdf)=>patchSession({pdf})} onPageChange={updatePdfPage} onScaleChange={updatePdfScale} jumpPage={jumpPage}/></div>
-        <div className="omr-container"><div className="omr-panel"><OMRSheet key={session.id} sections={sections} session={session} lockedSections={session.mode === "real" ? (session.status === "ready" || session.status === "finished" ? sections.map((s)=>s.id) : [...new Set([...(session.lockedSections || []), ...sections.filter((s)=>s.id!==session.currentSectionId).map((s)=>s.id)])]) : []} onSessionChange={patchSession} onQuestionChange={leaveQuestion} onAnswer={answer} onGrade={grade} onFinish={finish} onPageJump={(page)=>{setJumpPage(page);patchSession({pdfPage:page});}}/></div></div>
+        <div className="omr-container"><div className="omr-panel"><OMRSheet key={session.id} sections={sections} session={session} lockedSections={session.mode === "real" ? (["ready", "between-sections", "finished"].includes(session.status) ? sections.map((s)=>s.id) : [...new Set([...(session.lockedSections || []), ...sections.filter((s)=>s.id!==session.currentSectionId).map((s)=>s.id)])]) : []} onSessionChange={patchSession} onQuestionChange={leaveQuestion} onAnswer={answer} onGrade={grade} onFinish={finish} onPageJump={(page)=>{setJumpPage(page);patchSession({pdfPage:page});}}/></div></div>
         <aside className="right-panel"><div className="timer-section"><Timer key={session.id} sections={sections} session={session} onTimerChange={timerChange} onExpire={expire} onResetExam={resetRealExam}/></div><div className="timer-guide"><b>GSAT 시험 구성</b><span>수리논리 20문항 · 30분</span><span>추리 30문항 · 30분</span><small>모드는 상단 버튼에서 언제든 변경할 수 있습니다.</small></div></aside></div></main>;
   })();
 
-  return <><AppNav view={state.view} setView={setView} hasSession={Boolean(session)}/>{body}{showHelp && <Tutorial onClose={()=>setShowHelp(false)}/>}</>;
+  return <><AppNav view={state.view} setView={setView} hasSession={Boolean(session)}/>{body}{session?.status === "between-sections" && state.view === "exam" && <div className="section-transition-overlay" role="dialog" aria-modal="true" aria-labelledby="section-transition-title"><div className="section-transition-dialog"><h2 id="section-transition-title">수리 영역이 끝났습니다.</h2><p>추리 영역은 아직 시작되지 않았습니다.<br/>확인을 누르는 순간부터 30분이 시작됩니다.</p><strong>추리 · 30:00</strong><button autoFocus onClick={confirmSectionTransition}>확인하고 추리 시작</button></div></div>}{showHelp && <Tutorial onClose={()=>setShowHelp(false)}/>}</>;
 }
