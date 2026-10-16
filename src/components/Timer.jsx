@@ -5,6 +5,7 @@ export default function Timer({ sections, session, onTimerChange, onExpire, onRe
   const timer = session.timer;
   const [customMinutes, setCustomMinutes] = useState(Math.ceil(timer.remaining / 60));
   const warnedRef = useRef(new Set(timer.warnings || []));
+  const expiredRef = useRef(false);
   const currentSection = sections.find((section) => section.id === timer.sectionId) || sections[0];
   const timerKind = session.mode === "practice" && timer.kind === "stopwatch" ? "stopwatch" : "countdown";
 
@@ -23,7 +24,11 @@ export default function Timer({ sections, session, onTimerChange, onExpire, onRe
         warnedRef.current.add(warningMark);
         onTimerChange({ remaining, warnings: [...warnedRef.current] });
       } else onTimerChange({ remaining });
-      if (remaining <= 0) onExpire();
+      if (remaining > 0) expiredRef.current = false;
+      else if (!expiredRef.current) {
+        expiredRef.current = true;
+        onExpire();
+      }
     };
     tick();
     const id = window.setInterval(tick, 500);

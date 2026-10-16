@@ -121,8 +121,10 @@ export default function App() {
   const expire = () => {
     if (session.currentSectionId === sections[0].id) {
       const next = sections[1];
-      patchSession({ currentSectionId: next.id, currentQuestion: { sectionId: next.id, number: 1 }, lockedSections: [...new Set([...(session.lockedSections || []), sections[0].id])], timer: { kind: "countdown", running: true, sectionId: next.id, remaining: next.minutes * 60, elapsed: 0, startedAt: null, endAt: Date.now() + next.minutes * 60 * 1000, warnings: [] } });
-      enteredAtRef.current = Date.now(); alert("수리논리 시간이 종료되었습니다. 추리 영역으로 이동합니다.");
+      alert("수리 영역이 끝났습니다. 확인을 누르면 다음 영역으로 넘어갑니다.");
+      const nextStartedAt = Date.now();
+      patchSession({ currentSectionId: next.id, currentQuestion: { sectionId: next.id, number: 1 }, lockedSections: [...new Set([...(session.lockedSections || []), sections[0].id])], timer: { kind: "countdown", running: true, sectionId: next.id, remaining: next.minutes * 60, elapsed: 0, startedAt: null, endAt: nextStartedAt + next.minutes * 60 * 1000, warnings: [] } });
+      enteredAtRef.current = nextStartedAt;
     } else { patchSession({ status: "finished", lockedSections: sections.map((s) => s.id), timer: { ...session.timer, running: false, remaining: 0, endAt: null } }); alert("시험 시간이 종료되었습니다. 답안이 저장되었습니다."); }
   };
   const timerChange = (patch) => patchSession({ status: patch.running ? "running" : session.status, timer: { ...session.timer, ...patch } });
